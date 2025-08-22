@@ -138,7 +138,7 @@ export default async function NewArticlePage() {
           <div className="space-y-2">
             <h4 className="font-medium">Available Blogs:</h4>
             <div className="space-y-2">
-              {blogs.map((blog) => (
+              {blogs.map((blog: any) => (
                 <div key={blog.id} className="bg-gray-50 p-3 rounded-md">
                   <div className="flex justify-between items-center">
                     <div>

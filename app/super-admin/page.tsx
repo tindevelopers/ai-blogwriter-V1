@@ -53,7 +53,7 @@ export default async function SuperAdminPage() {
     select: { subscriptionPlan: true }
   })
 
-  const totalRevenue = agencies.reduce((acc, agency) => {
+  const totalRevenue = agencies.reduce((acc: number, agency: any) => {
     const planRevenue = agency.subscriptionPlan === 'enterprise' ? 299 : 
                       agency.subscriptionPlan === 'pro' ? 99 : 29
     return acc + planRevenue

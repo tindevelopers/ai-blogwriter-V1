@@ -62,7 +62,7 @@ export default async function ArticlesPage() {
         </Card>
       ) : (
         <div className="grid gap-6">
-          {articles.map((article) => (
+          {articles.map((article: any) => (
             <Card key={article.id} className="hover:shadow-md transition-shadow">
               <CardHeader>
                 <div className="flex justify-between items-start">

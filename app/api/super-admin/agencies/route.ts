@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     const hashedPassword = await bcrypt.hash(data.ownerPassword, 12)
 
     // Create agency and owner in a transaction
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       // Create the agency owner first
       const owner = await tx.user.create({
         data: {

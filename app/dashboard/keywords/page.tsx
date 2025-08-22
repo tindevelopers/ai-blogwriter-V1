@@ -68,7 +68,7 @@ export default async function KeywordsPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {keywords.map((keyword) => (
+              {keywords.map((keyword: any) => (
                 <div key={keyword.id} className="border rounded-lg p-4">
                   <div className="flex justify-between items-start mb-3">
                     <div>
@@ -111,7 +111,7 @@ export default async function KeywordsPage() {
                     <div>
                       <p className="text-sm font-medium text-gray-700 mb-2">Related Keywords:</p>
                       <div className="flex flex-wrap gap-2">
-                        {keyword.relatedKeywords.slice(0, 5).map((related, index) => (
+                        {keyword.relatedKeywords.slice(0, 5).map((related: any, index: number) => (
                           <span 
                             key={index}
                             className="px-2 py-1 bg-gray-100 text-gray-700 rounded-md text-sm"

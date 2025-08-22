@@ -133,7 +133,7 @@ export default async function BlogPage({ params }: BlogPageProps) {
               </div>
             ) : (
               <div className="space-y-4">
-                {blog.articles.map((article) => (
+                {blog.articles.map((article: any) => (
                   <div key={article.id} className="flex items-center justify-between p-4 border rounded-lg">
                     <div>
                       <h4 className="font-medium">{article.title}</h4>

@@ -50,12 +50,12 @@ export async function GET(request: NextRequest) {
     // Get provider names for summary
     const providers = await prisma.llmProvider.findMany({
       where: {
-        id: { in: summary.map(s => s.providerId) }
+        id: { in: summary.map((s: { providerId: string }) => s.providerId) }
       }
     })
 
-    const enhancedSummary = summary.map(s => {
-      const provider = providers.find(p => p.id === s.providerId)
+    const enhancedSummary = summary.map((s: { providerId: string }) => {
+      const provider = providers.find((p: { id: string; displayName: string }) => p.id === s.providerId)
       return {
         ...s,
         providerName: provider?.displayName || 'Unknown'
@@ -65,10 +65,10 @@ export async function GET(request: NextRequest) {
     // Calculate totals
     const totals = {
       totalRequests: usageLogs.length,
-      totalInputTokens: usageLogs.reduce((sum, log) => sum + log.inputTokens, 0),
-      totalOutputTokens: usageLogs.reduce((sum, log) => sum + log.outputTokens, 0),
-      totalCost: usageLogs.reduce((sum, log) => sum + log.totalCost, 0),
-      successRate: usageLogs.length ? (usageLogs.filter(log => log.isSuccess).length / usageLogs.length) * 100 : 0
+      totalInputTokens: usageLogs.reduce((sum: number, log: any) => sum + log.inputTokens, 0),
+      totalOutputTokens: usageLogs.reduce((sum: number, log: any) => sum + log.outputTokens, 0),
+      totalCost: usageLogs.reduce((sum: number, log: any) => sum + log.totalCost, 0),
+      successRate: usageLogs.length ? (usageLogs.filter((log: any) => log.isSuccess).length / usageLogs.length) * 100 : 0
     }
 
     return NextResponse.json({
