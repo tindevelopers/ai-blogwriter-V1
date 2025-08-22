@@ -1,0 +1,339 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+    output = "/home/ubuntu/shopify_blog_writer/app/node_modules/.prisma/client"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  firstName     String?
+  lastName      String?
+  companyName   String?
+  password      String
+  role          UserRole  @default(USER)
+  agencyId      String?   // For AGENCY_ADMIN and USER roles
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relationships
+  accounts         Account[]
+  sessions         Session[]
+  shopifyStores    ShopifyStore[]
+  blogs            Blog[]
+  articles         Article[]
+  agencyPreferences AgencyLlmPreference[]
+  llmUsageLogs     LlmUsageLog[]
+  
+  // Agency relationships
+  agency           Agency?   @relation("AgencyUsers", fields: [agencyId], references: [id])
+  ownedAgency      Agency?   @relation("AgencyOwner")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  AGENCY_ADMIN  
+  USER
+}
+
+model Agency {
+  id              String    @id @default(cuid())
+  name            String
+  slug            String    @unique // For white-label URL: agency-slug.yourdomain.com
+  domain          String?   @unique // Custom domain: agency-name.com
+  ownerId         String    @unique // Agency admin user
+  description     String?
+  logo            String?
+  primaryColor    String?   @default("#3b82f6") // Brand color
+  secondaryColor  String?   @default("#1e40af") // Secondary brand color
+  isActive        Boolean   @default(true)
+  
+  // Subscription & Billing
+  subscriptionPlan    String    @default("starter") // starter, pro, enterprise
+  subscriptionStatus  String    @default("active")  // active, suspended, cancelled
+  billingEmail        String?
+  maxUsers           Int       @default(5)
+  maxStores          Int       @default(10)
+  maxBlogCredits     Int       @default(100)
+  
+  // White-label Settings
+  hideOurBranding    Boolean   @default(false)
+  customTermsUrl     String?
+  customPrivacyUrl   String?
+  customSupportEmail String?
+  
+  // API & Integration Settings
+  allowCustomLlm     Boolean   @default(false)
+  allowApiAccess     Boolean   @default(false)
+  apiRateLimit       Int       @default(1000) // requests per hour
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relationships
+  owner           User      @relation("AgencyOwner", fields: [ownerId], references: [id])
+  users           User[]    @relation("AgencyUsers")
+  
+  @@index([slug])
+  @@index([isActive])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model ShopifyStore {
+  id          String   @id @default(cuid())
+  userId      String
+  storeName   String
+  storeUrl    String
+  accessToken String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  blogs    Blog[]
+  articles Article[]
+
+  @@unique([userId, storeUrl])
+}
+
+model Blog {
+  id          String   @id @default(cuid())
+  userId      String
+  storeId     String
+  title       String
+  description String?
+  status      String   @default("draft")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store    ShopifyStore @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  articles Article[]
+  keywords Keyword[]
+}
+
+model Article {
+  id              String   @id @default(cuid())
+  userId          String
+  storeId         String
+  blogId          String
+  title           String
+  content         String   @db.Text
+  excerpt         String?
+  slug            String
+  status          String   @default("draft")
+  shopifyArticleId String?
+  publishedAt     DateTime?
+  scheduledAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  store    ShopifyStore @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  blog     Blog         @relation(fields: [blogId], references: [id], onDelete: Cascade)
+  seoData  SeoData?
+  keywords Keyword[]
+
+  @@unique([storeId, slug])
+}
+
+model Keyword {
+  id                String   @id @default(cuid())
+  keyword           String
+  searchVolume      Int?
+  difficulty        Int?
+  cpc              Float?
+  competition      String?
+  relatedKeywords  String[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  blogs    Blog[]
+  articles Article[]
+  seoData  SeoData[]
+
+  @@unique([keyword])
+}
+
+model SeoData {
+  id                    String   @id @default(cuid())
+  articleId             String   @unique
+  metaTitle             String?
+  metaDescription       String?
+  focusKeyword          String?
+  keywordDensity        Float?
+  readabilityScore      Int?
+  seoScore              Int?
+  suggestions           String[]
+  competitorAnalysis    Json?
+  serp_data             Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  article  Article   @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  keywords Keyword[]
+}
+
+model ApiUsage {
+  id          String   @id @default(cuid())
+  userId      String
+  apiType     String
+  endpoint    String
+  requestsCount Int    @default(1)
+  cost        Float?
+  createdAt   DateTime @default(now())
+
+  @@index([userId, apiType, createdAt])
+}
+
+model Subscription {
+  id            String   @id @default(cuid())
+  userId        String
+  plan          String
+  status        String
+  currentPeriodStart DateTime
+  currentPeriodEnd   DateTime
+  blogCredits   Int      @default(0)
+  usedCredits   Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId])
+}
+
+// LLM Management Models
+model LlmProvider {
+  id          String   @id @default(cuid())
+  name        String   @unique  // "openai", "anthropic", "openrouter"
+  displayName String            // "OpenAI", "Anthropic", "Open Router"
+  baseUrl     String?           // API base URL
+  isEnabled   Boolean  @default(true)
+  priority    Int      @default(0)  // For fallback ordering (0 = highest priority)
+  apiKeyEnvVar String?          // Environment variable name for API key
+  maxRetries  Int      @default(3)
+  timeoutMs   Int      @default(30000)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  models      LlmModel[]
+  usageLogs   LlmUsageLog[]
+  preferences AgencyLlmPreference[]
+  
+  @@index([priority])
+}
+
+model LlmModel {
+  id               String      @id @default(cuid())
+  providerId       String
+  name             String                // "gpt-4-turbo", "claude-3-opus-20240229"
+  displayName      String                // "GPT-4 Turbo", "Claude 3 Opus"
+  description      String?
+  inputCostPer1K   Float                 // Cost per 1K input tokens
+  outputCostPer1K  Float                 // Cost per 1K output tokens
+  maxTokens        Int?                  // Maximum context window
+  quality          ModelQuality          // BASIC, PRO, ENTERPRISE
+  isEnabled        Boolean     @default(true)
+  capabilities     String[]              // ["text", "vision", "reasoning"]
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  provider      LlmProvider   @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  usageLogs     LlmUsageLog[]
+  preferences   AgencyLlmPreference[]
+  
+  @@unique([providerId, name])
+  @@index([quality, isEnabled])
+}
+
+enum ModelQuality {
+  BASIC      // Cheaper, faster models
+  PRO        // Balanced performance and cost  
+  ENTERPRISE // Premium, highest quality models
+}
+
+model AgencyLlmPreference {
+  id                    String       @id @default(cuid())
+  userId                String       // Agency admin user
+  providerId            String?      // Preferred primary provider
+  modelId               String?      // Preferred model
+  fallbackProviderId1   String?      // First fallback provider
+  fallbackProviderId2   String?      // Second fallback provider
+  maxQuality            ModelQuality @default(PRO)
+  enableFallback        Boolean      @default(true)
+  maxCostPer1K          Float?       // Maximum cost threshold
+  customInstructions    String?      // Custom system prompts
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  user                User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider            LlmProvider? @relation(fields: [providerId], references: [id])
+  model               LlmModel?    @relation(fields: [modelId], references: [id])
+
+  @@unique([userId])
+}
+
+model LlmUsageLog {
+  id                String      @id @default(cuid())
+  userId            String
+  providerId        String
+  modelId           String
+  requestType       String                // "blog_generation", "seo_optimization"
+  inputTokens       Int
+  outputTokens      Int
+  totalCost         Float
+  latencyMs         Int?
+  isSuccess         Boolean
+  errorMessage      String?
+  metadata          Json?                 // Store additional context
+  createdAt         DateTime    @default(now())
+
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider          LlmProvider @relation(fields: [providerId], references: [id])
+  model             LlmModel    @relation(fields: [modelId], references: [id])
+  
+  @@index([userId, createdAt])
+  @@index([providerId, createdAt])
+}
