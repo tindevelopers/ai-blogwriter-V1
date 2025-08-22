@@ -46,14 +46,23 @@ model User {
   lastName      String?
   companyName   String?
   password      String
+  role          UserRole  @default(USER)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts      Account[]
-  sessions      Session[]
-  shopifyStores ShopifyStore[]
-  blogs         Blog[]
-  articles      Article[]
+  accounts         Account[]
+  sessions         Session[]
+  shopifyStores    ShopifyStore[]
+  blogs            Blog[]
+  articles         Article[]
+  agencyPreferences AgencyLlmPreference[]
+  llmUsageLogs     LlmUsageLog[]
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  AGENCY_ADMIN  
+  USER
 }
 
 model VerificationToken {
@@ -184,4 +193,98 @@ model Subscription {
   updatedAt     DateTime @updatedAt
 
   @@unique([userId])
+}
+
+// LLM Management Models
+model LlmProvider {
+  id          String   @id @default(cuid())
+  name        String   @unique  // "openai", "anthropic", "openrouter"
+  displayName String            // "OpenAI", "Anthropic", "Open Router"
+  baseUrl     String?           // API base URL
+  isEnabled   Boolean  @default(true)
+  priority    Int      @default(0)  // For fallback ordering (0 = highest priority)
+  apiKeyEnvVar String?          // Environment variable name for API key
+  maxRetries  Int      @default(3)
+  timeoutMs   Int      @default(30000)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  models      LlmModel[]
+  usageLogs   LlmUsageLog[]
+  preferences AgencyLlmPreference[]
+  
+  @@index([priority])
+}
+
+model LlmModel {
+  id               String      @id @default(cuid())
+  providerId       String
+  name             String                // "gpt-4-turbo", "claude-3-opus-20240229"
+  displayName      String                // "GPT-4 Turbo", "Claude 3 Opus"
+  description      String?
+  inputCostPer1K   Float                 // Cost per 1K input tokens
+  outputCostPer1K  Float                 // Cost per 1K output tokens
+  maxTokens        Int?                  // Maximum context window
+  quality          ModelQuality          // BASIC, PRO, ENTERPRISE
+  isEnabled        Boolean     @default(true)
+  capabilities     String[]              // ["text", "vision", "reasoning"]
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  provider      LlmProvider   @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  usageLogs     LlmUsageLog[]
+  preferences   AgencyLlmPreference[]
+  
+  @@unique([providerId, name])
+  @@index([quality, isEnabled])
+}
+
+enum ModelQuality {
+  BASIC      // Cheaper, faster models
+  PRO        // Balanced performance and cost  
+  ENTERPRISE // Premium, highest quality models
+}
+
+model AgencyLlmPreference {
+  id                    String       @id @default(cuid())
+  userId                String       // Agency admin user
+  providerId            String?      // Preferred primary provider
+  modelId               String?      // Preferred model
+  fallbackProviderId1   String?      // First fallback provider
+  fallbackProviderId2   String?      // Second fallback provider
+  maxQuality            ModelQuality @default(PRO)
+  enableFallback        Boolean      @default(true)
+  maxCostPer1K          Float?       // Maximum cost threshold
+  customInstructions    String?      // Custom system prompts
+  createdAt             DateTime     @default(now())
+  updatedAt             DateTime     @updatedAt
+
+  user                User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider            LlmProvider? @relation(fields: [providerId], references: [id])
+  model               LlmModel?    @relation(fields: [modelId], references: [id])
+
+  @@unique([userId])
+}
+
+model LlmUsageLog {
+  id                String      @id @default(cuid())
+  userId            String
+  providerId        String
+  modelId           String
+  requestType       String                // "blog_generation", "seo_optimization"
+  inputTokens       Int
+  outputTokens      Int
+  totalCost         Float
+  latencyMs         Int?
+  isSuccess         Boolean
+  errorMessage      String?
+  metadata          Json?                 // Store additional context
+  createdAt         DateTime    @default(now())
+
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider          LlmProvider @relation(fields: [providerId], references: [id])
+  model             LlmModel    @relation(fields: [modelId], references: [id])
+  
+  @@index([userId, createdAt])
+  @@index([providerId, createdAt])
 }
