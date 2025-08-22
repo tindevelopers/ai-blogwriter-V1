@@ -14,7 +14,8 @@ import {
   LogOut,
   User,
   FileText,
-  Search
+  Search,
+  Brain
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -50,6 +51,11 @@ export function DashboardNav({ user }: DashboardNavProps) {
       name: 'Keywords',
       href: '/dashboard/keywords',
       icon: Search,
+    },
+    {
+      name: 'AI SDK Demo',
+      href: '/dashboard/ai-sdk-demo',
+      icon: Brain,
     },
     {
       name: 'Settings',

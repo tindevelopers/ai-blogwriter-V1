@@ -1,6 +1,6 @@
 
 import { BaseLlmProvider } from './base-provider'
-import { ProviderFactory, SupportedProvider } from './provider-factory'
+import { EnhancedProviderFactory, SupportedProvider } from './enhanced-provider-factory'
 import { LlmRequest, LlmResponse, LlmError, FallbackConfig, ProviderConfig } from './types'
 import { prisma } from '@/lib/db'
 
@@ -171,7 +171,7 @@ export class LlmRouter {
           timeoutMs: dbProvider.timeoutMs
         }
 
-        const provider = ProviderFactory.createProvider(
+        const provider = EnhancedProviderFactory.createProvider(
           dbProvider.name as SupportedProvider,
           config,
           `${dbProvider.id}-${this.config.userId}`
