@@ -50,11 +50,11 @@ export async function GET(request: NextRequest) {
     // Get provider names for summary
     const providers = await prisma.llmProvider.findMany({
       where: {
-        id: { in: summary.map(s => s.providerId) }
+        id: { in: summary.map((s: { providerId: string }) => s.providerId) }
       }
     })
 
-    const enhancedSummary = summary.map(s => {
+    const enhancedSummary = summary.map((s: { providerId: string }) => {
       const provider = providers.find(p => p.id === s.providerId)
       return {
         ...s,
