@@ -47,9 +47,12 @@ model User {
   companyName   String?
   password      String
   role          UserRole  @default(USER)
+  agencyId      String?   // For AGENCY_ADMIN and USER roles
+  isActive      Boolean   @default(true)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  // Relationships
   accounts         Account[]
   sessions         Session[]
   shopifyStores    ShopifyStore[]
@@ -57,12 +60,58 @@ model User {
   articles         Article[]
   agencyPreferences AgencyLlmPreference[]
   llmUsageLogs     LlmUsageLog[]
+  
+  // Agency relationships
+  agency           Agency?   @relation("AgencyUsers", fields: [agencyId], references: [id])
+  ownedAgency      Agency?   @relation("AgencyOwner")
 }
 
 enum UserRole {
   SUPER_ADMIN
   AGENCY_ADMIN  
   USER
+}
+
+model Agency {
+  id              String    @id @default(cuid())
+  name            String
+  slug            String    @unique // For white-label URL: agency-slug.yourdomain.com
+  domain          String?   @unique // Custom domain: agency-name.com
+  ownerId         String    @unique // Agency admin user
+  description     String?
+  logo            String?
+  primaryColor    String?   @default("#3b82f6") // Brand color
+  secondaryColor  String?   @default("#1e40af") // Secondary brand color
+  isActive        Boolean   @default(true)
+  
+  // Subscription & Billing
+  subscriptionPlan    String    @default("starter") // starter, pro, enterprise
+  subscriptionStatus  String    @default("active")  // active, suspended, cancelled
+  billingEmail        String?
+  maxUsers           Int       @default(5)
+  maxStores          Int       @default(10)
+  maxBlogCredits     Int       @default(100)
+  
+  // White-label Settings
+  hideOurBranding    Boolean   @default(false)
+  customTermsUrl     String?
+  customPrivacyUrl   String?
+  customSupportEmail String?
+  
+  // API & Integration Settings
+  allowCustomLlm     Boolean   @default(false)
+  allowApiAccess     Boolean   @default(false)
+  apiRateLimit       Int       @default(1000) // requests per hour
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relationships
+  owner           User      @relation("AgencyOwner", fields: [ownerId], references: [id])
+  users           User[]    @relation("AgencyUsers")
+  
+  @@index([slug])
+  @@index([isActive])
 }
 
 model VerificationToken {
