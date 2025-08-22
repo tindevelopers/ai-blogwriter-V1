@@ -1,4 +1,5 @@
 
+
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
@@ -7,6 +8,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Settings, User, CreditCard, Key, Shield } from 'lucide-react'
+import LlmProviderSettings from '@/components/settings/llm-provider-settings'
+import UsageAnalytics from '@/components/settings/usage-analytics'
+import ContentPreferences from '@/components/settings/content-preferences'
 
 export const dynamic = "force-dynamic"
 
@@ -19,12 +23,18 @@ export default async function SettingsPage() {
 
   const [user, subscription] = await Promise.all([
     prisma.user.findUnique({
-      where: { id: session.user.id }
+      where: { id: session.user.id },
+      include: {
+        agency: true
+      }
     }),
     prisma.subscription.findUnique({
       where: { userId: session.user.id }
     })
   ])
+
+  const isAgencyAdmin = user?.role === 'AGENCY_ADMIN'
+  const isSuperAdmin = user?.role === 'SUPER_ADMIN'
 
   return (
     <div className="space-y-6">
@@ -78,6 +88,16 @@ export default async function SettingsPage() {
                 disabled
               />
             </div>
+            {user?.agency && (
+              <div>
+                <Label htmlFor="agency">Agency</Label>
+                <Input
+                  id="agency"
+                  defaultValue={user.agency.name}
+                  disabled
+                />
+              </div>
+            )}
             <Button disabled>
               Save Changes (Coming Soon)
             </Button>
@@ -119,6 +139,15 @@ export default async function SettingsPage() {
           </CardContent>
         </Card>
 
+        {/* LLM Provider Settings */}
+        <LlmProviderSettings />
+
+        {/* Content Generation Preferences */}
+        <ContentPreferences />
+
+        {/* Usage Analytics */}
+        <UsageAnalytics />
+
         {/* API Integrations */}
         <Card>
           <CardHeader>
@@ -152,9 +181,33 @@ export default async function SettingsPage() {
                   </span>
                 </div>
               </div>
+
+              <div className="border rounded-lg p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h4 className="font-medium">OpenAI API</h4>
+                    <p className="text-sm text-gray-600">GPT models for content generation</p>
+                  </div>
+                  <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                    Connected
+                  </span>
+                </div>
+              </div>
+
+              <div className="border rounded-lg p-4">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h4 className="font-medium">OpenRouter API</h4>
+                    <p className="text-sm text-gray-600">Access to multiple LLM providers</p>
+                  </div>
+                  <span className="px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                    Connected
+                  </span>
+                </div>
+              </div>
             </div>
             <Button disabled>
-              Manage Integrations (Coming Soon)
+              Manage API Keys (Coming Soon)
             </Button>
           </CardContent>
         </Card>
@@ -193,7 +246,56 @@ export default async function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Role Information */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center space-x-2">
+              <Settings className="h-5 w-5" />
+              <CardTitle>Account Information</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Account Type:</span>
+                <span className={`px-2 py-1 rounded-full text-xs ${
+                  isSuperAdmin ? 'bg-red-100 text-red-800' :
+                  isAgencyAdmin ? 'bg-blue-100 text-blue-800' :
+                  'bg-gray-100 text-gray-800'
+                }`}>
+                  {user?.role?.replace('_', ' ') || 'User'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Member Since:</span>
+                <span>{new Date(user?.createdAt || '').toLocaleDateString()}</span>
+              </div>
+              {user?.agency && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Agency:</span>
+                  <span>{user.agency.name}</span>
+                </div>
+              )}
+            </div>
+            {isSuperAdmin && (
+              <div className="mt-4 p-3 bg-red-50 rounded-lg">
+                <p className="text-sm text-red-700">
+                  <strong>Super Admin Access:</strong> You have full system access and can manage all agencies and users.
+                </p>
+              </div>
+            )}
+            {isAgencyAdmin && (
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-700">
+                  <strong>Agency Admin:</strong> You can manage your agency's settings and users.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
 }
+
